@@ -101,3 +101,4 @@ spec:
   clusterSelector:
     matchExpressions:
       - {key: vendor, operator: In, values: ["OpenShift"]}
+      https://dev.azure.com/CTS-GD/Build/_git/OpenshiftAdmin
