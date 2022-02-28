@@ -45,4 +45,4 @@ spec:
   - status: "True"
     type: ManagedClusterConditionAvailable
   clusterSelector:
-    matchExpressions: []
+    matchExpressions: ['!X6MwesmfSMDKtj']
