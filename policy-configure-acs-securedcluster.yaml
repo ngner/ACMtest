@@ -1,0 +1,78 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-configure-acs-securedcluster
+  namespace: policy-configuration
+  annotations:
+    policy.open-cluster-management.io/standards: NIST 800-53
+    policy.open-cluster-management.io/categories: SI System and Information Integrity
+    policy.open-cluster-management.io/controls: SI-5 Security Alerts, Advisories, and Directives
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: policy-configure-acs-securedcluster
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: platform.stackrox.io/v1alpha1
+                kind: SecuredCluster
+                metadata:
+                  name: stackrox-secured-cluster-services
+                  namespace: stackrox
+                spec:
+                  clusterName: |
+                    {{ fromSecret "open-cluster-management-agent" "hub-kubeconfig-secret" "cluster-name" | base64dec }}
+                  admissionControl:
+                    bypass: BreakGlassAnnotation
+                    contactImageScanners: ScanIfMissing
+                    listenOnCreates: true
+                    listenOnEvents: true
+                    listenOnUpdates: true
+                    timeoutSeconds: 4
+                  auditLogs:
+                    collection: Auto
+                  centralEndpoint: 'central-stackrox.apps.wata-infra-01.americas.cshare.net:443'
+                  perNode:
+                    collector:
+                      collection: KernelModule
+                      imageFlavor: Regular
+                    taintToleration: TolerateTaints
+
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: all-managed-clusters
+  namespace: policy-configuration
+spec:
+  clusterConditions:
+  - status: 'True'
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - key: local-cluster
+        operator: NotIn
+        values:
+          - 'true'
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-configure-acs-securedcluster
+  namespace: policy-configuration
+placementRef:
+  name: all-managed-clusters
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: policy-configure-acs-securedcluster
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io

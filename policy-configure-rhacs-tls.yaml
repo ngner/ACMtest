@@ -1,0 +1,92 @@
+#
+# Out of the box, the Advanced Cluster Security (RHACS) product
+# uses a self signed certificate. This prevents Edge browser users
+# from accessing the ACS console.
+#
+# This policy introduces a new Route that uses the default *.apps.<DN>
+# certificate and then reencrypts using the Stackrox Central CA.
+#
+# It then proceeds to hack the SA central annotation as this
+# allows the AAD (oauth) authentication to work correctly.
+# ACS releases beyond 3.68.1 may not need this 'fix'.
+#
+# sjd 14 April, 2022
+#
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: configure-rhacs-tls
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: configure-rhacs-tls
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                kind: Route
+                apiVersion: route.openshift.io/v1
+                metadata:
+                  name: rhacs
+                  namespace: stackrox
+                spec:
+                  host: rhacs.apps.wata-infra-01.americas.cshare.net
+                  to:
+                    kind: Service
+                    name: central
+                    weight: 100
+                  port:
+                    targetPort: https
+                  tls:
+                    termination: reencrypt
+                    # because '{{ fromSecret "stackrox" "central-tls" "ca.pem" | base64dec }}' was fouling up the last line...
+                    destinationCACertificate: |-
+                      -----BEGIN CERTIFICATE-----
+                      MIIB0zCCAXigAwIBAgIUarAi1drAbXs9h8Y14X3cU7HgwE0wCgYIKoZIzj0EAwIw
+                      RzEnMCUGA1UEAxMeU3RhY2tSb3ggQ2VydGlmaWNhdGUgQXV0aG9yaXR5MRwwGgYD
+                      VQQFExM3MzQzMzgwMjY4Mjk3NjI2MDI0MB4XDTIyMDIxMTA5MjQwMFoXDTI3MDIx
+                      MDA5MjQwMFowRzEnMCUGA1UEAxMeU3RhY2tSb3ggQ2VydGlmaWNhdGUgQXV0aG9y
+                      aXR5MRwwGgYDVQQFExM3MzQzMzgwMjY4Mjk3NjI2MDI0MFkwEwYHKoZIzj0CAQYI
+                      KoZIzj0DAQcDQgAEPZmcH+tna8VifdRcY3dBLwMy4wjBSf4E2kuK8xJxHiB2ZuMC
+                      90FzuPEt1Y1XMRLU/1/tHJh2ie7jtmLUV1ov2qNCMEAwDgYDVR0PAQH/BAQDAgEG
+                      MA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFPkuMtA1rXHLesexnA2avDWQt2QO
+                      MAoGCCqGSM49BAMCA0kAMEYCIQDf6LokwAwcO/d0YYC/zNoRXFgckXOiFu1Kxb1X
+                      teSBeAIhAKuhahgJVIB1vnZwIrvDHKfc1ZxELQ1ek9AyJIZY1iiG
+                      -----END CERTIFICATE-----
+                    insecureEdgeTerminationPolicy: Redirect
+                  wildcardPolicy: None
+            - complianceType: musthave
+              objectDefinition:
+                kind: ServiceAccount
+                apiVersion: v1
+                metadata:
+                  name: central
+                  namespace: stackrox
+                  annotations:
+                    serviceaccounts.openshift.io/oauth-redirectreference.main: >-
+                      {"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"rhacs"}}
+                    serviceaccounts.openshift.io/oauth-redirecturi.main: sso/providers/openshift/callback
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-configure-rhacs-tls
+placementRef:
+  name: hub-only
+  kind: PlacementRule
+  apiGroup: apps.open-cluster-management.io
+subjects:
+- name: configure-rhacs-tls
+  kind: Policy
+  apiGroup: policy.open-cluster-management.io

@@ -1,0 +1,38 @@
+
+#
+# Copy the Init Bundle Secrets from the managed-secrets
+# namespace to all clusters.
+# This required copying the named secrets from teh Central Stackrox namespace to the ACM managed secrets NS namespace
+#
+apiVersion: apps.open-cluster-management.io/v1
+kind: Subscription
+metadata:
+  name: acs-init-bundle
+  namespace: stackrox
+  labels:
+    app: securedcluster
+spec:
+  channel: managed-secrets-channel-acm-ns/managed-secrets
+  packageFilter:
+    annotations:
+      secretkind: acs-init-bundle
+  placement:
+    placementRef:
+      kind: PlacementRule
+      name: all-managed-clusters
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: all-managed-clusters
+  namespace: stackrox
+spec:
+  clusterConditions:
+  - status: 'True'
+    type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - key: local-cluster
+        operator: NotIn
+        values:
+          - 'true'
