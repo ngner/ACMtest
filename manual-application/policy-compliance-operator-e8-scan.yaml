@@ -102,4 +102,24 @@ spec:
     matchExpressions:
       - {key: vendor, operator: In, values: ["OpenShift"]}
 
-   
+networking:
+  networkType: OVNKubernetes
+  clusterNetwork:
+  - cidr: 172.16.0.0/16
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.4.106.0/24
+  serviceNetwork:
+  - 172.17.0.0/22
+
+# You have created the install-config.yaml and modified as required
+# Create the manifests ./openshift-install create manifests --dir <installation_directory>
+# Copy this file to  <install-directory>/manifests/cluster-network-03-config.yaml
+apiVersion: operator.openshift.io/v1
+kind: Network
+metadata:
+  name: cluster
+spec:
+  defaultNetwork:
+    ovnKubernetesConfig:
+      ipsecConfig: {}
