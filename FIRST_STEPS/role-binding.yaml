@@ -1,0 +1,16 @@
+#
+# Allow the ServiceAccount sufficient permissions to
+# make changes to CRs in the local-acm-subscription namespace.
+#
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: 'root-subscription-owner:edit'
+  namespace: local-acm-subscription
+subjects:
+  - kind: ServiceAccount
+    name: root-subscription-owner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit

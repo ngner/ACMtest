@@ -1,0 +1,5 @@
+namespace: local-acm-subscription
+resources:
+- namespace.yaml
+- subscription.yaml
+- application.yaml
